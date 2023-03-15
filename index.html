@@ -2,13 +2,15 @@
 <html>
   <head>
     <meta charset="UTF-8">
-    <title>Composite Images</title>
+    <title>Image Composition</title>
   </head>
   <body>
-    <h1>Composite Images</h1>
-    <input type="file" id="imageInput" multiple>
-    <button onclick="compositeImages()">Composite</button>
+    <h1>Image Composition</h1>
+    <p>Select a base image and PNG images to composite:</p>
+    <input type="file" id="baseImageInput">
+    <input type="file" id="overlayImageInputs" multiple>
+    <button id="compositeButton">Composite Images</button>
     <div id="compositeImageContainer"></div>
+    <script src="composite.js"></script>
   </body>
-  <script src="composite.js"></script>
 </html>
