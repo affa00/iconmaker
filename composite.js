@@ -1,57 +1,82 @@
-function compositeImages() {
-  const imageFiles = document.getElementById('imageInput').files;
-  const images = [];
+// HTMLから要素を取得
+const baseImageInput = document.getElementById('baseImageInput');
+const overlayImageInputs = document.getElementById('overlayImageInputs');
+const compositeButton = document.getElementById('compositeButton');
+const compositeImageContainer = document.getElementById('compositeImageContainer');
 
-  // 画像読み込み完了時のコールバック関数
-  function imageLoaded() {
-    let maxWidth = 0;
-    let maxHeight = 0;
-
-    // 画像サイズの取得と、最大幅と高さの計算
-    for (let i = 0; i < images.length; i++) {
-      const img = images[i];
-      if (img.width > maxWidth) {
-        maxWidth = img.width;
-      }
-      if (img.height > maxHeight) {
-        maxHeight = img.height;
-      }
-    }
-
-    // 合成画像の作成と、各画像の貼り付け
-    const compositeCanvas = document.createElement('canvas');
-    compositeCanvas.width = maxWidth;
-    compositeCanvas.height = maxHeight;
-    const ctx = compositeCanvas.getContext('2d');
-    for (let i = 0; i < images.length; i++) {
-      const img = images[i];
-      const offsetX = (maxWidth - img.width) / 2;
-      const offsetY = (maxHeight - img.height) / 2;
-      ctx.drawImage(img, offsetX, offsetY);
-    }
-
-    // 合成画像の表示
-    const compositeImage = new Image();
-    compositeImage.src = compositeCanvas.toDataURL();
-    const compositeImageContainer = document.getElementById('compositeImageContainer');
-    compositeImageContainer.innerHTML = '';
-    compositeImageContainer.appendChild(compositeImage);
-  }
-
-  // 画像ファイルの読み込みと、images配列への追加
-  for (let i = 0; i < imageFiles.length; i++) {
-    const file = imageFiles[i];
+// 画像ファイルの読み込み
+function loadImages() {
+  // 基準画像の読み込み
+  const baseImageFile = baseImageInput.files[0];
+  const baseImagePromise = new Promise((resolve) => {
     const reader = new FileReader();
-    reader.onload = function(e) {
-      const img = new Image();
-      img.onload = function() {
-        images.push(img);
-        if (images.length === imageFiles.length) {
-          imageLoaded();
-        }
+    reader.onload = () => {
+      const baseImage = new Image();
+      baseImage.src = reader.result;
+      baseImage.onload = () => {
+        resolve(baseImage);
       };
-      img.src = e.target.result;
     };
-    reader.readAsDataURL(file);
+    reader.readAsDataURL(baseImageFile);
+  });
+  
+  // 透過PNG画像の読み込み
+  const overlayImagePromises = [];
+  for (let i = 0; i < overlayImageInputs.files.length; i++) {
+    const overlayImageFile = overlayImageInputs.files[i];
+    const overlayImagePromise = new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = () => {
+        const overlayImage = new Image();
+        overlayImage.src = reader.result;
+        overlayImage.onload = () => {
+          resolve(overlayImage);
+        };
+      };
+      reader.readAsDataURL(overlayImageFile);
+    });
+    overlayImagePromises.push(overlayImagePromise);
   }
+  
+  Promise.all([baseImagePromise, Promise.all(overlayImagePromises)]).then((results) => {
+    const baseImage = results[0];
+    const overlayImages = results[1];
+    compositeImages(baseImage, overlayImages);
+  });
 }
+
+// 画像の合成
+function compositeImages(baseImage, overlayImages) {
+  // 画像のサイズを取得
+  const maxW = baseImage.width;
+  const maxH = baseImage.height;
+  
+  // canvas要素の作成
+  const canvas = document.createElement('canvas');
+  canvas.width = maxW;
+  canvas.height = maxH;
+  const ctx = canvas.getContext('2d');
+  
+  // 基準画像を描画
+  ctx.drawImage(baseImage, 0, 0, maxW, maxH);
+  
+  // 透過PNG画像を描画
+  for (let i = 0; i < overlayImages.length; i++) {
+    const overlayImage = overlayImages[i];
+    const offsetX = (maxW - overlayImage.width) / 2;
+   
+    const offsetY = (maxH - overlayImage.height) / 2;
+    ctx.drawImage(overlayImage, offsetX, offsetY);
+  }
+  
+  // canvasを画像として出力
+  const compositeImage = new Image();
+  compositeImage.src = canvas.toDataURL('image/png');
+  
+  // 画像を表示
+  compositeImageContainer.innerHTML = '';
+  compositeImageContainer.appendChild(compositeImage);
+}
+
+// 合成ボタンのクリックイベントに関数を設定
+compositeButton.addEventListener('click', loadImages);
